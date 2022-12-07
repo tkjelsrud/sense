@@ -1,11 +1,72 @@
 <html>
 <head>
-<script src="https://cdn.jsdelivr.net/npm/tweakpane@3.1.1/dist/tweakpane.min.js"></script>
+  <meta charset="UTF-8">
+  <script src="https://cdn.jsdelivr.net/npm/tweakpane@3.1.1/dist/tweakpane.min.js"></script>
+  <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/nlp_compromise/3.0.0/nlp-compromise.es5.min.js"></script-->
+
+  <style>
+    body {
+      font-family: monospace;
+    }
+    #input {
+      background-color: lightgrey;
+      white-space: pre-wrap;
+
+    }
+    #output {
+      background-color: lightblue;
+      white-space: pre-wrap;
+    }
+  </style>
+
+  <script src="lib/compromise.js"></script>
+
 </head>
 
 <body>
 
+  <div id="input" contenteditable="true">Businesses which lack adaptability may be left paralyzed when faced with changing markets and environments. To counter this, business agility can be developed in the enterprise, making change a routine part of organizational life.[4] An agile enterprise may be able to nimbly adjust to and take advantage of emerging opportunities in a perpetually changing environment. The agile enterprise can be viewed as an integral component of a larger system whose activities produce a ripple effect of change within both the enterprise itself and the broader system.[5]
+
+    The discipline of enterprise architecture supports business agility through techniques including layering, separation of concerns, architecture frameworks, and the separation of dynamic and stable components. The model of hierarchical complexity—a framework for scoring the complexity of behavior—has been adapted to describe the stages of complexity in enterprise architecture.[6]
+    
+    One type of enterprise architecture that supports agility is a non-hierarchical organization without a single point of control.[7] In such an organization, individuals function autonomously, constantly interact with each other to define the organization's vision and aims, maintain a common understanding of requirements, and monitor the work that needs to be done. Roles and responsibilities are not predetermined but in flux, and emerge from individuals' self-organizing activities. Projects are generated across in the enterprise and sometimes from outside affiliates. Key decisions are made collaboratively, on the spot, and on the fly. Because of this, knowledge, power, and intelligence are spread through the enterprise, making it capable of quickly recovering and adapting to the loss of any key enterprise component.
+    
+    In business, projects can be complex with uncertain outcomes and goals that can change over time. Traditionally these issues were dealt with by planning experts who would attempt to pre-determine every possible detail prior to implementation; however, in many situations, even the most carefully conceived projects will be impossibly difficult to manage. Agile techniques, originating from the software development community, represent an alternative approach to the classic prescriptive planning approaches to management. The main focus of agile methods is to address the issues of complexity, uncertainty, and dynamic goals, by making planning and execution work in parallel rather than in sequence to eliminate unnecessary planning activity, and the resulting unnecessary work.
+    
+    Pragmatic methods for achieving organizational agility should start from an organization's competitive bases and the organization's mission, vision, and values.[8][9] Agile methods integrate planning with execution, allowing an organization to find an optimal ordering of work tasks and to adjust to changing requirements. The major causes of chaos on a project include an incomplete understanding of project components, incomplete understanding of component interactions, and changing requirements. Sometimes requirements change as a greater understanding of the project components unfolds over time. Requirements also change due to the changing needs and wants of the stakeholders. The agile approach allows a team or organization of collective trust, competence, and motivation to implement successful projects quickly by focusing on only a small set of details in any change iteration. This is in contrast to non-agile in which all the details necessary for completion are generally taken to be foreseeable and have equal priority inside of one large iteration.
+  </div>
+
+  <div id="button">Parse</div>
+
+  <div id="output" contenteditable="false">&nbsp;</div>
+
   <script type="text/javascript">
+    //
+    // Thinking this scope must be set pretty narrow
+    // Its not going to be an all purpose search engine or chatbot or mastermind
+    // It is simply going to be a note taking app with some required cataloging
+    // In time the cataloging part should be automatic (learned)
+    //
+    // It will assist in recovering relevant notes or documents
+    //
+    // Node
+    //   Some sort of ID (needed?)
+    //   Its title or brief (when displayed)
+    //   Its location in a hierarchy or map (dynamic)
+    //   Date (when entered)
+    //   Blob (trashable, the raw text, for reprocessing or keep as long as space is not an issue)
+    //   People (list of known relations)
+    //   Topics (list of keywords or phrases)
+    //   
+    // Pipeline
+    //   Language prosessing steps, taking input "Dodcument" and giving output (more and more refined)
+    //
+    //
+
+    // https://cocopon.github.io/tweakpane/quick-tour/
+    //
+    //
+
     const PARAMS = {
       factor: 123,
       title: 'hello',
@@ -17,6 +78,60 @@
     pane.addInput(PARAMS, 'factor');
     pane.addInput(PARAMS, 'title');
     pane.addInput(PARAMS, 'color');
+
+
+    // NLP test
+
+    document.getElementById("button").addEventListener('click', 
+      (event) => { 
+        let d = nlp(document.getElementById("input").textContent);
+        
+
+        /*d = d.filter(p => {
+          return p.has('four')
+        });*/
+
+        let dTerms = new Array();
+        d.json().forEach(sn => {
+          sn.terms = sn.terms.filter(t => { return !t.dirty});
+
+          sn.terms.forEach(t => {
+            dTerms.push(t);
+          });
+          
+        });
+
+        
+        //document.getElementById("output").textContent = JSON.stringify(d.json(0).terms, null, 2);
+        document.getElementById("output").textContent = JSON.stringify(dTerms);
+
+      }
+    );
+
+    document.getElementById("input").addEventListener('mouseup', 
+      (event) => { 
+        let d = nlp(getSelectedText());
+        document.getElementById("output").textContent = JSON.stringify(d.json(0).terms, null, 2);
+
+      }
+    );
+
+
+    // Allow me to select the most relevant terms or phrases
+    // These can be stored/highlighted and weighted.
+    // Ditch the rest of the text (to save space)
+    // Important part is that we consider some kind of identity and its place in the index or hierarchy
+    // However: that could be done later as long as we are able to find the node again
+    //
+    function getSelectedText() {
+      let text = "";
+      if (typeof window.getSelection != "undefined") {
+          text = window.getSelection().toString();
+      } else if (typeof document.selection != "undefined" && document.selection.type == "Text") {
+          text = document.selection.createRange().text;
+      }
+      return text;
+    }
   </script>
 </body>
 </html>
