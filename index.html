@@ -5,5 +5,18 @@
 
 <body>
 
+  <script type="text/javascript">
+    const PARAMS = {
+      factor: 123,
+      title: 'hello',
+      color: '#ff0055',
+    };
+
+    const pane = new Tweakpane.Pane();
+
+    pane.addInput(PARAMS, 'factor');
+    pane.addInput(PARAMS, 'title');
+    pane.addInput(PARAMS, 'color');
+  </script>
 </body>
 </html>
