@@ -62,6 +62,9 @@
     //   Language prosessing steps, taking input "Dodcument" and giving output (more and more refined)
     //
     //
+    // Relevant stuff to look into
+    //   Fuzzy matching Compromise-fuzzy-matching
+    //
 
     // https://cocopon.github.io/tweakpane/quick-tour/
     //
@@ -85,18 +88,23 @@
     document.getElementById("button").addEventListener('click', 
       (event) => { 
         let d = nlp(document.getElementById("input").textContent);
-        
+        let n = d.match('#Noun');
+
+        let r = nlp('');
+
+        // Figure out how I can create my own document so I can do some processing on the terms I pick
 
         /*d = d.filter(p => {
           return p.has('four')
         });*/
 
         let dTerms = new Array();
-        d.json().forEach(sn => {
+        n.json().forEach(sn => {
           sn.terms = sn.terms.filter(t => { return !t.dirty});
 
           sn.terms.forEach(t => {
             dTerms.push(t);
+            r.insert(t);
           });
           
         });
@@ -104,6 +112,7 @@
         
         //document.getElementById("output").textContent = JSON.stringify(d.json(0).terms, null, 2);
         document.getElementById("output").textContent = JSON.stringify(dTerms);
+        console.log(r);
 
       }
     );
