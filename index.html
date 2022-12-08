@@ -11,11 +11,37 @@
     #input {
       background-color: lightgrey;
       white-space: pre-wrap;
-
+      margin-bottom: 20px;
     }
     #output {
       background-color: lightblue;
       white-space: pre-wrap;
+      margin-bottom: 20px;
+    }
+
+    .termgroup {
+      float: left;
+    }
+
+    .term {
+      float: left;
+      background-color: lightgoldenrodyellow;
+      border-radius: 6px;
+      margin-right: 4px;
+      padding: 4px;
+    }
+
+    #promotedTerms .term {
+      background-color: lightsalmon;
+    }
+
+    .button {
+      float: left;
+      background-color: grey;
+      border-color: darkcyan;
+      font-weight: bold;
+      padding: 4px;
+      width: 100px;
     }
   </style>
 
@@ -36,9 +62,14 @@
     Pragmatic methods for achieving organizational agility should start from an organization's competitive bases and the organization's mission, vision, and values.[8][9] Agile methods integrate planning with execution, allowing an organization to find an optimal ordering of work tasks and to adjust to changing requirements. The major causes of chaos on a project include an incomplete understanding of project components, incomplete understanding of component interactions, and changing requirements. Sometimes requirements change as a greater understanding of the project components unfolds over time. Requirements also change due to the changing needs and wants of the stakeholders. The agile approach allows a team or organization of collective trust, competence, and motivation to implement successful projects quickly by focusing on only a small set of details in any change iteration. This is in contrast to non-agile in which all the details necessary for completion are generally taken to be foreseeable and have equal priority inside of one large iteration.
   </div>
 
-  <div id="button">Parse</div>
+  <div id="btnParse" class="button">Parse</div>
 
-  <div id="output" contenteditable="false">&nbsp;</div>
+  <!--div id="output" contenteditable="false">&nbsp;</div-->
+
+  <div id="foundTerms" class="termgroup">&nbsp;</div>
+  <div id="promotedTerms" class="termgroup">&nbsp;</div>
+
+  <div id="btnSave" class="button">Save</div>
 
   <script type="text/javascript">
     //
@@ -85,46 +116,57 @@
 
     // NLP test
 
-    document.getElementById("button").addEventListener('click', 
+    function compareConfidence(a, b) {
+      if ( a.confidence < b.confidence ){
+        return -1;
+      }
+      if ( a.confidence > b.confidence ){
+        return 1;
+      }
+      return 0;
+    }
+
+    document.getElementById("btnParse").addEventListener('click', 
       (event) => { 
-        let d = nlp(document.getElementById("input").textContent);
-        let n = d.match('#Noun');
 
-        let r = nlp('');
+        let d = nlp(document.getElementById("input").textContent.replaceAll('.', ' '));
+        d = d.normalize().terms().nouns().toSingular().unique().toLowerCase();
 
-        // Figure out how I can create my own document so I can do some processing on the terms I pick
-
-        /*d = d.filter(p => {
-          return p.has('four')
-        });*/
-
-        let dTerms = new Array();
-        n.json().forEach(sn => {
-          sn.terms = sn.terms.filter(t => { return !t.dirty});
-
-          sn.terms.forEach(t => {
-            dTerms.push(t);
-            r.insert(t);
-          });
-          
-        });
-
+        let tl = d.termList();
         
-        //document.getElementById("output").textContent = JSON.stringify(d.json(0).terms, null, 2);
-        document.getElementById("output").textContent = JSON.stringify(dTerms);
-        console.log(r);
+        tl.filter(t => { return (!t.dirty)});
 
+        tl.sort(compareConfidence);
+        //tl.reverse();
+
+        let html = "";
+        tl.forEach(t => {html += termToDiv(t.text)});
+        
+        document.getElementById("foundTerms").innerHTML = html;
       }
     );
+
+    //let terms = document.getElementsByClassName("term");
+    //terms.forEach(t => { t.addEventListener('click', (event) => {
+    //    console.log(event);
+    //}); });
 
     document.getElementById("input").addEventListener('mouseup', 
       (event) => { 
         let d = nlp(getSelectedText());
-        document.getElementById("output").textContent = JSON.stringify(d.json(0).terms, null, 2);
+        document.getElementById("foundTerms").innerHTML += termToDiv(d.text());
 
       }
     );
 
+    function termToDiv(termText) {
+      return `<div class="term" onClick="javascript:void(termClick('${termText}'))">${termText}</div>`;
+    }
+
+    function termClick(term) {
+      //console.log(term);
+      document.getElementById("promotedTerms").innerHTML += termToDiv(term);
+    }
 
     // Allow me to select the most relevant terms or phrases
     // These can be stored/highlighted and weighted.
