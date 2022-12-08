@@ -1,6 +1,9 @@
 <html>
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <title>sense</title>
+  <link rel="icon" type="image/x-icon" href="/img/favicon.ico" />
+
   <script src="https://cdn.jsdelivr.net/npm/tweakpane@3.1.1/dist/tweakpane.min.js"></script>
   <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/nlp_compromise/3.0.0/nlp-compromise.es5.min.js"></script-->
 
@@ -8,10 +11,24 @@
     body {
       font-family: monospace;
     }
-    #input {
-      background-color: lightgrey;
-      white-space: pre-wrap;
+    #search {
+      background-color: lightskyblue;
+      white-space: pre-line;
       margin-bottom: 20px;
+      color: black;
+    }
+
+    #search:not(:focus) {
+      color: grey;
+    }
+
+    #input {
+      float:none;
+      background-color: lightgrey;
+      white-space: pre-line;
+      margin-bottom: 20px;
+      max-height: 300px;
+      overflow: scroll;
     }
     #output {
       background-color: lightblue;
@@ -36,40 +53,37 @@
     }
 
     .button {
-      float: left;
       background-color: grey;
       border-color: darkcyan;
       font-weight: bold;
       padding: 4px;
+      min-height: 20px;
       width: 100px;
     }
   </style>
 
   <script src="lib/compromise.js"></script>
-
+  <script src="lib/util.js"></script>
 </head>
 
 <body>
 
-  <div id="input" contenteditable="true">Businesses which lack adaptability may be left paralyzed when faced with changing markets and environments. To counter this, business agility can be developed in the enterprise, making change a routine part of organizational life.[4] An agile enterprise may be able to nimbly adjust to and take advantage of emerging opportunities in a perpetually changing environment. The agile enterprise can be viewed as an integral component of a larger system whose activities produce a ripple effect of change within both the enterprise itself and the broader system.[5]
-
-    The discipline of enterprise architecture supports business agility through techniques including layering, separation of concerns, architecture frameworks, and the separation of dynamic and stable components. The model of hierarchical complexity—a framework for scoring the complexity of behavior—has been adapted to describe the stages of complexity in enterprise architecture.[6]
-    
-    One type of enterprise architecture that supports agility is a non-hierarchical organization without a single point of control.[7] In such an organization, individuals function autonomously, constantly interact with each other to define the organization's vision and aims, maintain a common understanding of requirements, and monitor the work that needs to be done. Roles and responsibilities are not predetermined but in flux, and emerge from individuals' self-organizing activities. Projects are generated across in the enterprise and sometimes from outside affiliates. Key decisions are made collaboratively, on the spot, and on the fly. Because of this, knowledge, power, and intelligence are spread through the enterprise, making it capable of quickly recovering and adapting to the loss of any key enterprise component.
-    
-    In business, projects can be complex with uncertain outcomes and goals that can change over time. Traditionally these issues were dealt with by planning experts who would attempt to pre-determine every possible detail prior to implementation; however, in many situations, even the most carefully conceived projects will be impossibly difficult to manage. Agile techniques, originating from the software development community, represent an alternative approach to the classic prescriptive planning approaches to management. The main focus of agile methods is to address the issues of complexity, uncertainty, and dynamic goals, by making planning and execution work in parallel rather than in sequence to eliminate unnecessary planning activity, and the resulting unnecessary work.
-    
-    Pragmatic methods for achieving organizational agility should start from an organization's competitive bases and the organization's mission, vision, and values.[8][9] Agile methods integrate planning with execution, allowing an organization to find an optimal ordering of work tasks and to adjust to changing requirements. The major causes of chaos on a project include an incomplete understanding of project components, incomplete understanding of component interactions, and changing requirements. Sometimes requirements change as a greater understanding of the project components unfolds over time. Requirements also change due to the changing needs and wants of the stakeholders. The agile approach allows a team or organization of collective trust, competence, and motivation to implement successful projects quickly by focusing on only a small set of details in any change iteration. This is in contrast to non-agile in which all the details necessary for completion are generally taken to be foreseeable and have equal priority inside of one large iteration.
+  <div id="viewSearch">
+    <div id="search" contenteditable="true" onkeyup="search()">&nbsp;</div>
+    <div id="btnSearch" class="button">Search</div>
   </div>
+  <div id="viewEdit">
+    <div id="input" contenteditable="true">&nbsp;</div>
 
-  <div id="btnParse" class="button">Parse</div>
+    <div id="btnParse" class="button">Parse</div>
 
-  <!--div id="output" contenteditable="false">&nbsp;</div-->
+    <!--div id="output" contenteditable="false">&nbsp;</div-->
 
-  <div id="foundTerms" class="termgroup">&nbsp;</div>
-  <div id="promotedTerms" class="termgroup">&nbsp;</div>
+    <div id="foundTerms" class="termgroup">&nbsp;</div>
+    <div id="promotedTerms" class="termgroup">&nbsp;</div>
 
-  <div id="btnSave" class="button">Save</div>
+    <div id="btnSave" class="button" onclick="saveClick()">Save</div>
+  </div>
 
   <script type="text/javascript">
     //
@@ -101,19 +115,6 @@
     //
     //
 
-    const PARAMS = {
-      factor: 123,
-      title: 'hello',
-      color: '#ff0055',
-    };
-
-    const pane = new Tweakpane.Pane();
-
-    pane.addInput(PARAMS, 'factor');
-    pane.addInput(PARAMS, 'title');
-    pane.addInput(PARAMS, 'color');
-
-
     // NLP test
 
     function compareConfidence(a, b) {
@@ -129,20 +130,7 @@
     document.getElementById("btnParse").addEventListener('click', 
       (event) => { 
 
-        let d = nlp(document.getElementById("input").textContent.replaceAll('.', ' '));
-        d = d.normalize().terms().nouns().toSingular().unique().toLowerCase();
-
-        let tl = d.termList();
-        
-        tl.filter(t => { return (!t.dirty)});
-
-        tl.sort(compareConfidence);
-        //tl.reverse();
-
-        let html = "";
-        tl.forEach(t => {html += termToDiv(t.text)});
-        
-        document.getElementById("foundTerms").innerHTML = html;
+        parseInput();
       }
     );
 
@@ -154,10 +142,38 @@
     document.getElementById("input").addEventListener('mouseup', 
       (event) => { 
         let d = nlp(getSelectedText());
-        document.getElementById("foundTerms").innerHTML += termToDiv(d.text());
+        d.normalize();
+        d.compute('root');
+        d.toLowerCase();
 
+        document.getElementById("foundTerms").innerHTML += termToDiv(d.json()[0].terms.map(t => t.root || t.normal).join(" "));
       }
     );
+
+    function parseInput() {
+      let d = nlp(document.getElementById("input").textContent.replaceAll('.', ' '));
+        d = d.normalize().terms().nouns().toSingular().unique().toLowerCase();
+
+        let tl = d.termList();
+        
+        tl.filter(t => { return (!t.dirty)});
+
+        tl.sort(compareConfidence);
+
+        let html = "";
+        tl.forEach(t => {html += termToDiv(t.text)});
+        
+        document.getElementById("foundTerms").innerHTML = html;
+    }
+
+    function displayNode(node) {
+      //domElement.innerHTML = trustedText.replace(/\r/g, '').replace(/\n/g, '<br>');
+      document.getElementById("input").innerHTML = node.text.replace(/\n/g, '<br>');
+
+      Object.keys(node.terms).forEach(t => {document.getElementById("promotedTerms").innerHTML += termToDiv(t, 'nextDrop')});
+
+      parseInput();
+    }
 
     function termToDiv(termText) {
       return `<div class="term" onClick="javascript:void(termClick('${termText}'))">${termText}</div>`;
@@ -166,6 +182,29 @@
     function termClick(term) {
       //console.log(term);
       document.getElementById("promotedTerms").innerHTML += termToDiv(term);
+
+    }
+
+    function saveClick() {
+      // Viewed text saved to node
+      curNode.text = document.getElementById("input").innerText;
+
+      Array.from(document.getElementById("promotedTerms").children).forEach(dt => {curNode.addTerm(dt.innerText, 0.5)});
+
+      //
+      //
+
+      nList.save();
+
+      PARAMS.log.push('saved');
+    }
+
+    function search() {
+      let q = document.getElementById("search").innerText;
+      
+      console.log(q);
+
+      // TODO: Add an index to lookup in and show list over relevant matches
     }
 
     // Allow me to select the most relevant terms or phrases
@@ -174,15 +213,93 @@
     // Important part is that we consider some kind of identity and its place in the index or hierarchy
     // However: that could be done later as long as we are able to find the node again
     //
-    function getSelectedText() {
-      let text = "";
-      if (typeof window.getSelection != "undefined") {
-          text = window.getSelection().toString();
-      } else if (typeof document.selection != "undefined" && document.selection.type == "Text") {
-          text = document.selection.createRange().text;
+
+
+    class NodeList {
+      constructor() {
+        this.list = new Array();
       }
-      return text;
+
+      load() {
+        let jsn = JSON.parse(localStorage.getItem("nodeList"));
+
+        if(!jsn) return 0;
+
+        for(let i = 0; i < jsn.length; i++) {
+          this.list.push(new Node(jsn[i]));
+        }
+
+        return jsn.length;
+      }
+
+      save() {
+        localStorage.setItem("nodeList", JSON.stringify(this.list.map(t => t.toJson())));
+      }
     }
+
+    class Node {
+      constructor(jsn = null) {
+        this.id = 0;
+        this.type = 'node';
+        this.text = "hello this is a node test";
+        this.date = (new Date()).toLocaleString();
+        this.url = "";
+        this.terms = {};
+
+        if(jsn)
+          this.fromJson(jsn);
+      }
+
+      fromJson(jsn) {
+        this.id = (jsn.id ? jsn.id : null);
+        this.type = (jsn.type ? jsn.type : 'node');
+        this.text = (jsn.text ? jsn.text : "");
+        this.date = (jsn.date ? jsn.date : (new Date()).toLocaleString());
+        this.url  = (jsn.url ? jsn.url : "");
+        this.terms = (jsn.terms ? jsn.terms : {});
+      }
+
+      toJson() {
+        return {'id': this.id, 'type': this.type, 'text': this.text, 'url': this.url, 'date': this.date, 'terms': this.terms};
+      }
+
+      addTerm(term, weight = 0) {
+        this.terms[term] = weight;
+      }
+    }
+
+    // Boot region
+    //
+
+    const nList = new NodeList();
+
+    nList.load();
+
+    // select node somehow (query param?)
+    const curNode = nList.list[0];
+
+    displayNode(curNode);
+
+    const PARAMS = {
+      nodes: nList.list.length,
+      current: curNode.id,
+      storeSize: calculateLocalStorageSize(),
+      log: [],
+    };
+
+    const pane = new Tweakpane.Pane();
+
+    pane.addInput(PARAMS, 'nodes', {step: 1});
+    pane.addInput(PARAMS, 'current', {step: 1});
+    pane.addInput(PARAMS, 'storeSize');
+
+
+    document.getElementById("search").focus();
+
+    /*pane.addMonitor(PARAMS, 'log', {
+      multiline: true,
+      lineCount: 5,
+    });*/
   </script>
 </body>
 </html>
