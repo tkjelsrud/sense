@@ -36,16 +36,48 @@
       margin-bottom: 20px;
     }
 
-    .termgroup {
+    #viewNodes {
       float: left;
+      width: 100%;
     }
+
+    .node {
+      float: left;
+      display: none;
+      width: 100%;
+      background-color: lightyellow;
+      margin-bottom: 8px;
+      min-height: 50px;
+    }
+    .visible {
+      display: block;
+    }
+    .text {
+      float: left;
+      width: 100%;
+      margin-bottom: 8px;
+      min-height: 50px;
+      white-space: pre-line;
+      overflow: scroll;
+    }
+
+    /*.termgroup {
+      float: left;
+      margin-top: 2px;
+      margin-bottom: 2px;
+    }*/
 
     .term {
       float: left;
-      background-color: lightgoldenrodyellow;
+      font-size: 8px;
+      background-color: lightsalmon;
       border-radius: 6px;
       margin-right: 4px;
       padding: 4px;
+    }
+
+    .weak {
+      background-color: antiquewhite;
     }
 
     #promotedTerms .term {
@@ -53,6 +85,7 @@
     }
 
     .button {
+      float:left;
       background-color: grey;
       border-color: darkcyan;
       font-weight: bold;
@@ -72,18 +105,20 @@
     <div id="search" contenteditable="true" onkeyup="search()">&nbsp;</div>
     <div id="btnSearch" class="button">Search</div>
   </div>
-  <div id="viewEdit">
+  <div id="viewNodes">
+    &nbsp;
+  </div>
+  <div id="btnAdd" class="button" onclick="addDomNode()">Add</div>
+  <!--div id="viewEdit">
     <div id="input" contenteditable="true">&nbsp;</div>
 
     <div id="btnParse" class="button">Parse</div>
-
-    <!--div id="output" contenteditable="false">&nbsp;</div-->
 
     <div id="foundTerms" class="termgroup">&nbsp;</div>
     <div id="promotedTerms" class="termgroup">&nbsp;</div>
 
     <div id="btnSave" class="button" onclick="saveClick()">Save</div>
-  </div>
+  </div-->
 
   <script type="text/javascript">
     //
@@ -127,28 +162,13 @@
       return 0;
     }
 
-    document.getElementById("btnParse").addEventListener('click', 
-      (event) => { 
-
-        parseInput();
-      }
-    );
 
     //let terms = document.getElementsByClassName("term");
     //terms.forEach(t => { t.addEventListener('click', (event) => {
     //    console.log(event);
     //}); });
 
-    document.getElementById("input").addEventListener('mouseup', 
-      (event) => { 
-        let d = nlp(getSelectedText());
-        d.normalize();
-        d.compute('root');
-        d.toLowerCase();
 
-        document.getElementById("foundTerms").innerHTML += termToDiv(d.json()[0].terms.map(t => t.root || t.normal).join(" "));
-      }
-    );
 
     function parseInput() {
       let d = nlp(document.getElementById("input").textContent.replaceAll('.', ' '));
@@ -161,35 +181,66 @@
         tl.sort(compareConfidence);
 
         let html = "";
-        tl.forEach(t => {html += termToDiv(t.text)});
+        tl.forEach(t => {html += termToDiv(t.text, 0)});
         
         document.getElementById("foundTerms").innerHTML = html;
     }
 
-    function displayNode(node) {
-      //domElement.innerHTML = trustedText.replace(/\r/g, '').replace(/\n/g, '<br>');
-      document.getElementById("input").innerHTML = node.text.replace(/\n/g, '<br>');
+    function addNodeToDom(node, style = "") {
+      let nt = document.getElementById("viewNodes");
+      let divN = document.createElement("div");
+      divN.id = node.id;
+      divN.classList.add("node");
+      if(style != "") divN.classList.add(style);
 
-      Object.keys(node.terms).forEach(t => {document.getElementById("promotedTerms").innerHTML += termToDiv(t, 'nextDrop')});
+      divN.innerHTML += `<div class="text" contenteditable="true" onblur="saveDomNode(this)">${node.text}</div>`;
+      Object.keys(node.terms).forEach(t => { divN.innerHTML += termToDiv(t, node.terms[t])});
 
-      parseInput();
+      nt.appendChild(divN);
+
+      //parseInput();
     }
 
-    function termToDiv(termText) {
-      return `<div class="term" onClick="javascript:void(termClick('${termText}'))">${termText}</div>`;
+    function termToDiv(termText, weight = 0) {
+      return `<div class="term ${(weight > 0 ? '' : 'weak')}" onClick="javascript:void(termClick(this,'${termText}'))">${termText}</div>`;
     }
 
-    function termClick(term) {
-      //console.log(term);
-      document.getElementById("promotedTerms").innerHTML += termToDiv(term);
+    /*document.getElementById("btnParse").addEventListener('click', 
+      (event) => { 
+
+        parseInput();
+      }
+    );
+
+
+    document.getElementById("input").addEventListener('mouseup', 
+      (event) => { 
+        let d = nlp(getSelectedText());
+        d.normalize();
+        d.compute('root');
+        d.toLowerCase();
+
+        document.getElementById("foundTerms").innerHTML += termToDiv(d.json()[0].terms.map(t => t.root || t.normal).join(" "));
+      }
+    );*/
+
+    function termClick(elem, term) {
+      console.log(elem.parentElement.id);
+      console.log(term);
+      //document.getElementById("promotedTerms").innerHTML += termToDiv(term);
 
     }
 
-    function saveClick() {
-      // Viewed text saved to node
-      curNode.text = document.getElementById("input").innerText;
+    function saveDomNode(elem) {
+      curNode = elem.parentElement.id;
 
-      Array.from(document.getElementById("promotedTerms").children).forEach(dt => {curNode.addTerm(dt.innerText, 0.5)});
+      const cn = nList.getById(curNode);
+
+      cn.text = elem.innerText;
+
+      cn.parseNlp();
+
+      //Array.from(document.getElementById("promotedTerms").children).forEach(dt => {curNode.addTerm(dt.innerText, 0.5)});
 
       //
       //
@@ -199,6 +250,27 @@
       PARAMS.log.push('saved');
     }
 
+    function deleteDomNode(elem) {
+      nList.deleteById(elem.parentElement.id);
+      curNode = 0;
+
+      document.getElementById(elem.parentElement.id).outerHTML = "";
+
+      nList.save();
+    }
+
+    function addDomNode() {
+      n = new Node();
+      n.id = nList.list[nList.list.length-1].id + 1;
+      n.text = "New node...";
+      nList.add(n);
+
+      addNodeToDom(n, 'visible');
+
+      nList.save();
+      //document.getElementById("viewNodes")
+    }
+
     function search() {
       let q = document.getElementById("search").innerText;
       
@@ -206,6 +278,22 @@
 
       // TODO: Add an index to lookup in and show list over relevant matches
     }
+
+    document.addEventListener("paste", function(e) {
+      // cancel paste
+      e.preventDefault();
+
+      // get text representation of clipboard
+      let text = (e.originalEvent || e).clipboardData.getData('text/plain');
+      e.clipboardData.setData('text/plain', text);
+      //clipboardData.set
+
+      //e.stopPropagation();
+      // insert text manually
+      //console.log(e.target);
+      //console.log(text);
+      e.target.innerText += text; //("insertHTML", false, text);
+  });
 
     // Allow me to select the most relevant terms or phrases
     // These can be stored/highlighted and weighted.
@@ -218,6 +306,27 @@
     class NodeList {
       constructor() {
         this.list = new Array();
+      }
+
+      add(node) {
+        this.list.push(node);
+      }
+
+      getById(id) {
+        for(let i = 0; i < this.list.length; i++) {
+          if(this.list[i].id == id)
+            return this.list[i];
+        }
+        return null;
+      }
+
+      deleteById(id) {
+        for(let i = 0; i < this.list.length; i++) {
+          if(this.list[i].id == id) {
+            this.list.splice(i, 1);
+            return;
+          }
+        }
       }
 
       load() {
@@ -264,7 +373,24 @@
       }
 
       addTerm(term, weight = 0) {
+        if(term in this.terms) {
+          if(this.terms[term] > weight)
+            return; // Don't add term of lower weight
+        }
         this.terms[term] = weight;
+      }
+
+      parseNlp() {
+        let d = nlp(this.text.replaceAll('.', ' '));
+        d = d.normalize().terms().nouns().toSingular().unique().toLowerCase();
+
+        let tl = d.termList();
+        
+        tl.filter(t => { return (!t.dirty)});
+
+        tl.sort(compareConfidence);
+
+        tl.forEach(t => {this.addTerm(t.text)});
       }
     }
 
@@ -272,17 +398,17 @@
     //
 
     const nList = new NodeList();
-
     nList.load();
 
-    // select node somehow (query param?)
-    const curNode = nList.list[0];
+    nList.list.forEach(n => { addNodeToDom(n) });
 
-    displayNode(curNode);
+    // select node somehow (query param?)
+    let curNode = 1;
+    //displayNode(curNode);
 
     const PARAMS = {
       nodes: nList.list.length,
-      current: curNode.id,
+      current: curNode,
       storeSize: calculateLocalStorageSize(),
       log: [],
     };
