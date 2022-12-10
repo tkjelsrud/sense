@@ -103,6 +103,7 @@
 
   <div id="viewSearch">
     <div id="search" contenteditable="true" onkeyup="search()">&nbsp;</div>
+    <div id="searchHints" onclick="alert(this)" style="display:none">&nbsp;</div>
     <div id="btnSearch" class="button">Search</div>
   </div>
   <div id="viewNodes">
@@ -240,11 +241,6 @@
 
       cn.parseNlp();
 
-      //Array.from(document.getElementById("promotedTerms").children).forEach(dt => {curNode.addTerm(dt.innerText, 0.5)});
-
-      //
-      //
-
       nList.save();
 
       PARAMS.log.push('saved');
@@ -274,7 +270,22 @@
     function search() {
       let q = document.getElementById("search").innerText;
       
-      console.log(q);
+      let res = nList.index.search(q);
+
+      if(res != "") {
+        let hDiv = document.getElementById("searchHints");
+        hDiv.style.display = "block";
+        hDiv.innerText = res;
+
+      }
+      else {
+        let hDiv = document.getElementById("searchHints");
+        hDiv.style.display = "none";
+        hDiv.innerText = "";
+      }
+      
+
+      //console.log(res);
 
       // TODO: Add an index to lookup in and show list over relevant matches
     }
@@ -302,10 +313,26 @@
     // However: that could be done later as long as we are able to find the node again
     //
 
+    class NodeIndex {
+      constructor() {
+        this.index = nlp('index');
+      }
+
+      append(id, text, weight = 0) {
+        this.index.append(`#${id}# ${text}`);
+      }
+
+      search(query) {
+        let m = this.index.match(`. ~${query}~ .`, null, { fuzzy: 0.3 }).out();
+
+        return m;
+      }
+    }
 
     class NodeList {
       constructor() {
         this.list = new Array();
+        this.index = new NodeIndex();
       }
 
       add(node) {
@@ -335,7 +362,10 @@
         if(!jsn) return 0;
 
         for(let i = 0; i < jsn.length; i++) {
-          this.list.push(new Node(jsn[i]));
+          let n = new Node(jsn[i])
+          this.list.push(n);
+          this.index.append(n.id, n.text);
+          this.index.append(n.id, n.termsToStr(), 0.5);
         }
 
         return jsn.length;
@@ -391,6 +421,10 @@
         tl.sort(compareConfidence);
 
         tl.forEach(t => {this.addTerm(t.text)});
+      }
+
+      termsToStr() {
+        return Object.keys(this.terms).join(" ");
       }
     }
 
